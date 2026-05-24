@@ -54,6 +54,7 @@ ${userCode}
     });
 
     const data = await res.json();
+    console.log("FULL API RESPONSE:", JSON.stringify(data, null, 2));
 
     let review = "Error generating review";
 
