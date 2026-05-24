@@ -14,24 +14,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      - name: Get diff
-        run: |
+      - run: |
           git fetch origin main
           git diff origin/main > diff.txt
 
-      - name: Debug token
-        run: |
+      - run: |
           echo "Token value: $GITHUB_TOKEN"
 
       - name: Run AI Review
