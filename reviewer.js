@@ -15,6 +15,9 @@ const userCode = fs.readFileSync(filePath, "utf-8");
 
 async function run() {
 
+    console.log("Token:", token ? "FOUND" : "MISSING");
+    console.log("API Key:", key ? "FOUND" : "MISSING");
+
     if (!userCode) {
         console.log("No code found");
         return;
@@ -36,6 +39,8 @@ Code:
 ${userCode}
 `;
 
+    console.log("Sending request to OpenRouter...");
+
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -53,14 +58,18 @@ ${userCode}
         })
     });
 
-    if (!res.ok) {
-        console.log("HTTP ERROR:", res.status);
-        const text = await res.text();
-        console.log("ERROR BODY:", text);
+    console.log("Response status:", res.status);
+
+    const text = await res.text();
+    console.log("RAW RESPONSE:", text);
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        console.log("JSON parse error");
         return;
     }
-    const data = await res.json();
-    console.log("FULL API RESPONSE:", JSON.stringify(data, null, 2));
 
     let review = "Error generating review";
 
@@ -68,7 +77,7 @@ ${userCode}
         review = data.choices[0]?.message?.content || "No content returned";
     }
 
-    console.log(review);
+    console.log("FINAL REVIEW:", review);
 
     // 💬 Post comment to PR
     const context = github.context;
