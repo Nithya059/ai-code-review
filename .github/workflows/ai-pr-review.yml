@@ -30,11 +30,13 @@ jobs:
           git fetch origin main
           git diff origin/main > diff.txt
 
-      - name: Debug token (IMPORTANT)
-        run: echo "Token value: $GITHUB_TOKEN"
+      - name: Debug token
+        run: |
+          echo "Token value: $GITHUB_TOKEN"
 
       - name: Run AI Review
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node reviewer.js diff.txt
+        run: |
+          node reviewer.js diff.txt
