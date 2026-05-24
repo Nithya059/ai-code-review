@@ -43,7 +43,7 @@ ${userCode}
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            model: "openai/gpt-3.5-turbo",
+            model: "openai/gpt-4o-mini",
             messages: [
                 {
                     role: "user",
@@ -53,13 +53,19 @@ ${userCode}
         })
     });
 
+    if (!res.ok) {
+        console.log("HTTP ERROR:", res.status);
+        const text = await res.text();
+        console.log("ERROR BODY:", text);
+        return;
+    }
     const data = await res.json();
     console.log("FULL API RESPONSE:", JSON.stringify(data, null, 2));
 
     let review = "Error generating review";
 
-    if (data.choices) {
-        review = data.choices[0].message.content;
+    if (data.choices && data.choices.length > 0) {
+        review = data.choices[0]?.message?.content || "No content returned";
     }
 
     console.log(review);
