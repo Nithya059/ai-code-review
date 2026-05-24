@@ -1,20 +1,20 @@
 import fetch from "node-fetch";
+import * as github from "@actions/github";
 
 const key = process.env.OPENROUTER_API_KEY;
+const token = process.env.GITHUB_TOKEN;
+
+const octokit = github.getOctokit(token);
 
 async function run() {
 
-    // ✅ Get code from terminal input
-    const userCode = process.argv[2] || 
-    process.env.CODE;
+    const userCode = process.env.CODE;
 
-    // ❌ If no input, stop
     if (!userCode) {
-        console.log("Please provide code to review.");
+        console.log("No code found");
         return;
     }
 
-    // ✅ Clean prompt
     const prompt = `
 You are a strict senior software engineer.
 
@@ -23,22 +23,14 @@ Analyze the following code and give a professional code review.
 Return output in this format:
 
 ### Bugs
-- ...
-
 ### Security Issues
-- ...
-
 ### Performance Issues
-- ...
-
 ### Improvements
-- ...
 
 Code:
 ${userCode}
 `;
 
-    // ✅ API call
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -58,12 +50,23 @@ ${userCode}
 
     const data = await res.json();
 
-    // ✅ Safe output (no crash)
+    let review = "Error generating review";
+
     if (data.choices) {
-        console.log(data.choices[0].message.content);
-    } else {
-        console.log("Error:", data);
+        review = data.choices[0].message.content;
     }
+
+    console.log(review);
+
+    // 🔥 POST COMMENT TO PR
+    const context = github.context;
+
+    await octokit.rest.issues.createComment({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        issue_number: context.issue.number,
+        body: `🤖 AI Code Review:\n\n${review}`
+    });
 }
 
 run();
