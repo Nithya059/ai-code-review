@@ -25,7 +25,7 @@ jobs:
         run: |
           git fetch origin main
           echo "CODE<<EOF" >> $GITHUB_ENV
-          git diff origin/main >> $GITHUB_ENV
+          git diff origin/main -- . ':!node_modules' ':!package-lock.json' >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Run AI Review
