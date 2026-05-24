@@ -4,6 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   review:
     runs-on: ubuntu-latest
@@ -21,16 +26,12 @@ jobs:
         run: npm install
 
       - name: Get changed files
-        id: diff
         run: |
           git fetch origin main
-          echo "CODE<<EOF" >> $GITHUB_ENV
-          git diff origin/main -- . ':!node_modules' ':!package-lock.json' >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          git diff origin/main > diff.txt
 
       - name: Run AI Review
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node reviewer.js
+          node reviewer.js diff.txt

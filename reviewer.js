@@ -1,14 +1,19 @@
+import fs from "fs";
 import fetch from "node-fetch";
 import * as github from "@actions/github";
 
+// 🔑 Get keys
 const key = process.env.OPENROUTER_API_KEY;
 const token = process.env.GITHUB_TOKEN;
 
+// 📦 GitHub API
 const octokit = github.getOctokit(token);
 
-async function run() {
+// 📂 Read file from argument
+const filePath = process.argv[2];
+const userCode = fs.readFileSync(filePath, "utf-8");
 
-    const userCode = process.env.CODE;
+async function run() {
 
     if (!userCode) {
         console.log("No code found");
@@ -58,7 +63,7 @@ ${userCode}
 
     console.log(review);
 
-    // 🔥 POST COMMENT TO PR
+    // 💬 Post comment to PR
     const context = github.context;
 
     await octokit.rest.issues.createComment({
