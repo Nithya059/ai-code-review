@@ -4,6 +4,7 @@ import * as github from "@actions/github";
 
 const key = process.env.OPENROUTER_API_KEY;
 const token = process.env.GITHUB_TOKEN;
+const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
 
 if (!key || !token) {
   console.error("Missing OPENROUTER_API_KEY or GITHUB_TOKEN");
@@ -11,30 +12,54 @@ if (!key || !token) {
 }
 
 const octokit = github.getOctokit(token);
-const filePath = process.argv[2];
+const owner = event.repository.owner.login;
+const repo = event.repository.name;
+const prNumber = event.pull_request.number;
 
-if (!filePath || !fs.existsSync(filePath)) {
-  console.error("diff file not found");
-  process.exit(1);
+async function getFiles() {
+  const files = await octokit.rest.pulls.listFiles({
+    owner,
+    repo,
+    pull_number: prNumber,
+    per_page: 100
+  });
+  return files.data;
 }
 
-const userCode = fs.readFileSync(filePath, "utf-8");
+function buildChunks(files, maxChars = 12000) {
+  const chunks = [];
+  let current = "";
 
-async function run() {
+  for (const file of files) {
+    const block = `File: ${file.filename}
+Patch:
+${file.patch || "[no patch]"}
+
+`;
+    if (current.length + block.length > maxChars && current) {
+      chunks.push(current);
+      current = block;
+    } else {
+      current += block;
+    }
+  }
+
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+async function reviewChunk(chunk) {
   const prompt = `
 You are a strict senior software engineer.
 
-Analyze the following pull request diff and give a professional code review.
-
-Return output in this format:
-
+Review this PR diff and return only concise findings under these headings:
 ### Bugs
 ### Security Issues
 ### Performance Issues
 ### Improvements
 
 Diff:
-${userCode}
+${chunk}
 `;
 
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -45,26 +70,47 @@ ${userCode}
     },
     body: JSON.stringify({
       model: "openai/gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }]
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1000
     })
   });
 
   if (!res.ok) {
     const text = await res.text();
-    console.error("OpenRouter error:", res.status, text);
-    process.exit(1);
+    throw new Error(`OpenRouter error: ${res.status} ${text}`);
   }
 
   const data = await res.json();
-  const review = data.choices?.[0]?.message?.content || "No review content returned";
+  return data.choices?.[0]?.message?.content || "No content returned";
+}
 
-  const context = github.context;
+async function run() {
+  const files = await getFiles();
+  if (!files.length) {
+    console.log("No changed files found");
+    return;
+  }
+
+  const chunks = buildChunks(files);
+  const reviews = [];
+
+  for (const chunk of chunks.slice(0, 4)) {
+    reviews.push(await reviewChunk(chunk));
+  }
+
+  const body = `🤖 AI Code Review
+
+${reviews.join("
+
+---
+
+")}`;
 
   await octokit.rest.issues.createComment({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    issue_number: context.issue.number,
-    body: `🤖 AI Code Review:\n\n${review}`
+    owner,
+    repo,
+    issue_number: prNumber,
+    body
   });
 }
 
