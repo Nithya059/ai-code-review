@@ -28,7 +28,13 @@ jobs:
 
       - name: Generate diff
         run: |
-          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+          git diff origin/${{ github.base_ref }}...HEAD -- '*.js' '*.ts' '*.py' > full_diff.txt
+          head -n 200 full_diff.txt > diff.txt
+          
+      - name: Check diff size
+        run: |
+          wc -l diff.txt
+          wc -c diff.txt
 
       - name: Run AI Review
         env:
