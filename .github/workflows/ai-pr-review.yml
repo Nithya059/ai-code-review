@@ -1,12 +1,11 @@
 name: AI Code Review
 
 on:
-  pull_request_target:
-    types: [opened, synchronize]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
-  issues: write
   pull-requests: write
 
 jobs:
@@ -14,24 +13,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
 
-      - run: npm install
+      - name: Install dependencies
+        run: npm install
 
-      - run: |
-          git fetch origin main
-          git diff origin/main > diff.txt
-
-      - run: |
-          echo "Token value: $GITHUB_TOKEN"
+      - name: Generate diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
 
       - name: Run AI Review
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          node reviewer.js diff.txt
+        run: node reviewer.js diff.txt
