@@ -2,15 +2,21 @@ name: AI Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   review:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout PR
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -20,17 +26,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Get changed files
-        id: diff
-        run: |
-          git fetch origin main
-          echo "CODE<<EOF" >> $GITHUB_ENV
-          git diff origin/main >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
       - name: Run AI Review
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          CODE_TO_REVIEW: ${{ steps.diff.outputs.diff }}
-        run: |
-          node reviewer.js
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: node reviewer.js
