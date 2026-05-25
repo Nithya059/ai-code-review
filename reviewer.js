@@ -100,11 +100,7 @@ async function run() {
 
   const body = `🤖 AI Code Review
 
-${reviews.join("
-
----
-
-")}`;
+  ${reviews.join("\n\n---\n\n")}`;
 
   await octokit.rest.issues.createComment({
     owner,
