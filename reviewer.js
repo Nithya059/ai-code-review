@@ -86,6 +86,7 @@ ${chunk}
 
 async function run() {
   const files = await getFiles();
+
   if (!files.length) {
     console.log("No changed files found");
     return;
@@ -98,16 +99,45 @@ async function run() {
     reviews.push(await reviewChunk(chunk));
   }
 
+  // ✅ WOW FEATURE (summary)
+  const summary = `### 📊 Summary
+- Files Reviewed: ${files.length}
+- Chunks Processed: ${chunks.length}
+
+`;
+
   const body = `🤖 AI Code Review
 
-  ${reviews.join("\n\n---\n\n")}`;
+${summary}
 
-  await octokit.rest.issues.createComment({
+${reviews.join("\n\n---\n\n")}`;
+
+  // ✅ FIX SPAM (update instead of new comment)
+  const comments = await octokit.rest.issues.listComments({
     owner,
     repo,
-    issue_number: prNumber,
-    body
+    issue_number: prNumber
   });
+
+  const botComment = comments.data.find(c =>
+    c.body.includes("🤖 AI Code Review")
+  );
+
+  if (botComment) {
+    await octokit.rest.issues.updateComment({
+      owner,
+      repo,
+      comment_id: botComment.id,
+      body
+    });
+  } else {
+    await octokit.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: prNumber,
+      body
+    });
+  }
 }
 
 run().catch((err) => {
